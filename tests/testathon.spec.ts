@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { LandingPage } from '../pages/LandingPage';
 import { ReservationPage, type GuestDetails } from '../pages/ReservationPage';
+import { ContactPage, type ContactDetails } from '../pages/ContactPage';
 
 function futureDate(daysFromNow: number): string {
   const date = new Date();
@@ -8,16 +9,27 @@ function futureDate(daysFromNow: number): string {
   return date.toISOString().split('T')[0];
 }
 
-test.describe('TC-001 - Landing Page - Rooms Section', () => {
-  let landingPage: LandingPage;
+let landingPage: LandingPage;
+let reservationPage: ReservationPage;
+let contactPage: ContactPage;
 
-  test.beforeEach(async ({ page }) => {
-    landingPage = new LandingPage(page);
-    await landingPage.open();
-    await landingPage.waitForRoomsSection();
-  });
+test.beforeEach(async ({ page }) => {
+  landingPage = new LandingPage(page);
+  reservationPage = new ReservationPage(page);
+  contactPage = new ContactPage(page);
+});
+
+test.afterEach(async ({ page }) => {
+  await page.close();
+  await new Promise(resolve => setTimeout(resolve, 1000));
+});
+
+test.describe('TC-001 - Landing Page - Rooms Section', () => {
 
   test('should display rooms with bookable cards', async () => {
+    await landingPage.open();
+    await landingPage.waitForRoomsSection();
+
     const cardCount = await landingPage.roomCards.count();
     expect(cardCount).toBeGreaterThanOrEqual(1);
 
@@ -32,8 +44,6 @@ test.describe('TC-001 - Landing Page - Rooms Section', () => {
 });
 
 test.describe('TC-002 - Booking with valid data', () => {
-  let reservationPage: ReservationPage;
-
   const guest: GuestDetails = {
     firstName: 'Teszt',
     lastName: 'Elek',
@@ -41,14 +51,8 @@ test.describe('TC-002 - Booking with valid data', () => {
     phone: '+36301234567',
   };
 
-  test.beforeEach(async ({ page }) => {
-    reservationPage = new ReservationPage(page);
-  });
-
   test('should complete booking and show confirmation', async () => {
-    const now = new Date();
-    const seed = now.getHours() * 60 + now.getMinutes() + now.getSeconds();
-    const offset = 30 + (seed % 300);
+    const offset = 30 + Math.floor(Math.random() * 300);
     const checkin = futureDate(offset);
     const checkout = futureDate(offset + 2);
 
@@ -60,5 +64,25 @@ test.describe('TC-002 - Booking with valid data', () => {
 
     await expect(reservationPage.confirmationTitle).toHaveText('Booking Confirmed');
     await expect(reservationPage.confirmationDates).toBeVisible();
+  });
+});
+
+test.describe('TC-003 - Contact form submission', () => {
+  const contact: ContactDetails = {
+    name: 'Elek Teszt',
+    email: 'elek.teszt@mail.com',
+    phone: '+3656789621',
+    subject: 'Érdeklődnék',
+    message: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus mattis arcu libero, eu placerat nunc convallis ut. Mauris semper leo eget sem accumsan sed.',
+  };
+
+  test('should submit message and show confirmation', async () => {
+    await landingPage.open();
+    await contactPage.scrollToContact();
+    await contactPage.fillForm(contact);
+    await contactPage.submit();
+    await contactPage.waitForConfirmation();
+
+    await expect(contactPage.confirmationHeading).toContainText('Thanks for getting in touch');
   });
 });

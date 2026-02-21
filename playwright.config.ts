@@ -6,6 +6,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['html'], ['list']],
   use: {
+    baseURL: 'https://automation.testathon.hu',
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
